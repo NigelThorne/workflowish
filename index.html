@@ -1,0 +1,166 @@
+<html>
+	<head>
+		<script type='text/javascript' src='jquery-1.6.2.min.js'></script>
+		<script type='text/javascript' src='jquery.tmpl.js'></script>
+		<script type='text/javascript' src='jquery.jkey-1.2.js'></script>
+		<style>
+			input {border: 0px; position: absolute;}			
+		</style>
+	</head>
+	
+	<body>
+		<!-- Nodes -->
+		<form onSubmit="return false;">
+			<input id="editor"/>
+		</form>
+		
+		<script type="text/html" id="pageTemplate">
+			<h1>${name}</h1>
+			<ul>
+			{{tmpl(nodes) "#nodeTemplate"}}
+			</ul>
+		</script>		
+
+		<script type="text/html" id="nodeTemplate">
+			<li class="node">
+				<span>${name}</span>
+				<ul>
+				{{tmpl(nodes) "#nodeTemplate"}}
+				</ul>
+			</li>			
+		</script>		
+	</body>
+
+
+	<script lang='text/javascript'>	
+	
+	function edit_node(node){
+		var txt = node_text(node);
+		window.current_node = node;
+		$("#editor")[0].value = txt;
+		$("#editor").focus();
+		move_editor_to_node(node);
+	};
+	
+	function node_text(node){
+		return node.children("span").text();
+	};
+	
+	function set_node_text(node, text){
+		return node.children("span").text(text);
+	};
+
+	function swap_with_next(node){
+		node.insertAfter(node.next());
+	};
+
+	function swap_with_previous(node){
+		node.prev().insertAfter(node);
+	};
+
+	function outdent(node){
+		node.insertAfter(parent_node(node));
+	};
+	
+	function indent(node){
+		node.appendTo(items(node.prev()));
+	};	
+	
+	function remove(node){
+		node.remove();
+	};
+			
+	function parent_node(node){
+		return node.parents(".node").first()
+	};	
+			
+	function items(node){
+		return node.children("ul");
+	};
+	
+	function add_sibling(node){
+		return create_node().insertAfter(node);
+	};
+	
+	function create_node(){
+		return $( "#nodeTemplate" ).tmpl( {name: "", nodes: []} );
+	};
+	<!----   end of node methods   ---->
+	
+	// enter => add following sibling
+	// ctrl up => swap with prev
+	// ctrl down => swap with next
+	// ctrl right => indent
+	// ctrl left => outdent
+	/// backspace empty textbox => remove 
+	$("#editor").jkey('enter', function(){
+		edit_node(add_sibling(window.current_node));
+	}).jkey('backspace', true, function(){
+		if(this.value.length == 0) {
+			remove(window.current_node);
+			return false;
+		};
+		return true;
+	});
+	
+	var isCtrl = false;
+
+	$(document).keyup(function (e) {
+		if(e.which == 17) isCtrl=false;
+	}).keydown(function (e) {
+		if(e.which == 17) isCtrl=true;
+	});	
+
+	$(document).keydown(function(event){
+		if(isCtrl){
+			if(event.keyCode ==  37){ // left
+				outdent(window.current_node);
+				return false;
+			};
+			if(event.keyCode ==  39){ // right
+				indent(window.current_node);
+				return false;
+			};
+			if(event.keyCode ==  40){ // down
+				swap_with_next(window.current_node);
+				return false;
+			};
+			if(event.keyCode ==  38){ // up
+				swap_with_previous(window.current_node);
+				return false;
+			};
+		};
+	});
+
+	
+	//TODO move edit box
+	function move_editor_to_node(node){
+		var p = node.position();
+		$("#editor").position(p);
+	};
+	
+	function on_span_clicked(){
+		edit_node($(this).parent());
+	};
+
+	function update_node_from_editor(){
+		set_node_text(window.current_node, $("#editor")[0].value);
+	};
+	
+	var rootNode = {name: "Nigel's Page", nodes:[
+			{name: 'Inbox',nodes:[]}, 
+			{name: 'Archive',nodes:[]}, 
+			{name: 'Sent', nodes: [
+				{name: 'Jane',nodes:[]}
+			]}, 
+			{name: 'Spam',nodes:[]}
+		]};
+	
+	
+	$("#pageTemplate").tmpl(rootNode).appendTo($("body"));
+	$(".node > span").live("click", on_span_clicked);
+	edit_node($(rootNode));
+	setInterval("update_node_from_editor()",100);
+	
+	</script>
+</html>

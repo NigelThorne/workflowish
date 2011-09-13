@@ -3,8 +3,9 @@
 		<script type='text/javascript' src='jquery-1.6.2.min.js'></script>
 		<script type='text/javascript' src='jquery.tmpl.js'></script>
 		<script type='text/javascript' src='jquery.jkey-1.2.js'></script>
-		<style>
-			input {border: 0px; position: absolute;}			
+		<style>			
+			#editor {border: 0px; position: absolute; font-size: 1.0em;}
+			li, .node{font-size: 1.0em;}
 		</style>
 	</head>
 	
@@ -35,6 +36,7 @@
 	<script lang='text/javascript'>	
 	
 	function edit_node(node){
+		if(node === undefined || node.length == 0) return;
 		var txt = node_text(node);
 		window.current_node = node;
 		$("#editor")[0].value = txt;
@@ -52,22 +54,38 @@
 
 	function swap_with_next(node){
 		node.insertAfter(node.next());
+		move_editor_to_node(node);
 	};
 
 	function swap_with_previous(node){
 		node.prev().insertAfter(node);
+		move_editor_to_node(node);
+	};
+	
+	function next(node){
+//		return node.next();
+		if(node.length === 0) return null
+		return $(node.next()[0] || next(node.parents(".node").first()));
+	};
+
+	function prev(node){
+//		return node.prev();
+		return $(node.prev()[0] || node.parents(".node").first());
 	};
 
 	function outdent(node){
 		node.insertAfter(parent_node(node));
+		move_editor_to_node(node);
 	};
 	
 	function indent(node){
 		node.appendTo(items(node.prev()));
+		move_editor_to_node(node);
 	};	
 	
 	function remove(node){
-		node.remove();
+		edit_node(node.prev() || node.next());
+		node.remove();		
 	};
 			
 	function parent_node(node){
@@ -102,17 +120,10 @@
 		};
 		return true;
 	});
-	
-	var isCtrl = false;
 
-	$(document).keyup(function (e) {
-		if(e.which == 17) isCtrl=false;
-	}).keydown(function (e) {
-		if(e.which == 17) isCtrl=true;
-	});	
 
 	$(document).keydown(function(event){
-		if(isCtrl){
+		if(event.ctrlKey){
 			if(event.keyCode ==  37){ // left
 				outdent(window.current_node);
 				return false;
@@ -129,37 +140,66 @@
 				swap_with_previous(window.current_node);
 				return false;
 			};
+		}
+		else if(event.altKey){
+			if(event.keyCode ==  37){ // left
+				edit_node( parent_node(window.current_node));
+				return false;
+			};
+			if(event.keyCode ==  39){ // right
+				edit_node(window.current_node.find(".node").first());
+				return false;
+			};
+			if(event.keyCode ==  40){ // down				
+				edit_node(next(window.current_node));
+				return false;
+			};
+			if(event.keyCode ==  38){ // up
+				edit_node(prev(window.current_node));
+				return false;
+			};
 		};
 	});
-
 	
-	//TODO move edit box
 	function move_editor_to_node(node){
 		var p = node.position();
-		$("#editor").position(p);
+		$("#editor").css("top",p.top -2).css("left", p.left - 2);
 	};
 	
 	function on_span_clicked(){
 		edit_node($(this).parent());
 	};
 
+	function set_editor_width_from_node(node){
+		// uses li  not span
+		$("#editor").css("width", window.current_node.css("width"));
+	}
+	
 	function update_node_from_editor(){
 		set_node_text(window.current_node, $("#editor")[0].value);
-	};
+		set_editor_width_from_node(window.current_node);
+	};	
 	
-	var rootNode = {name: "Nigel's Page", nodes:[
-			{name: 'Inbox',nodes:[]}, 
-			{name: 'Archive',nodes:[]}, 
-			{name: 'Sent', nodes: [
-				{name: 'Jane',nodes:[]}
-			]}, 
-			{name: 'Spam',nodes:[]}
-		]};
-	
-	
+	var rootNode = {name: "Things Left to do...", nodes:[
+				{name: 'Look',nodes:[		
+					{name: 'Colour the scopes',nodes:[]}, 			
+				]}, 
+				{name: 'Feel',nodes:[
+					{name: 'Expand/Collapse',nodes:[]}, 	
+					{name: 'Split line with "enter"',nodes:[]}, 	
+				]}, 
+				{name: 'Function',nodes:[		
+					{name: 'Save',nodes:[]}, 
+					{name: 'Load',nodes:[]},
+					{name: 'Undo',nodes:[]},
+				]}, 
+					{name: 'Redo',nodes:[]},
+					{name: 'Auto-Save',nodes:[]},
+			]};
+		
 	$("#pageTemplate").tmpl(rootNode).appendTo($("body"));
 	$(".node > span").live("click", on_span_clicked);
-	edit_node($(rootNode));
+	edit_node($(".node").first());
 	setInterval("update_node_from_editor()",100);
 	
 	</script>

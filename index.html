@@ -15,12 +15,14 @@
 			<input id="editor"/>
 		</form>
 		
-		<script type="text/html" id="pageTemplate">
+		<script type="text/html" id="pageTemplate" >
+			<div id="tree" >
 			<h1>${name}</h1>
 			<ul>
 			{{tmpl(nodes) "#nodeTemplate"}}
 			</ul>
-		</script>		
+			</div>
+		</script>	
 
 		<script type="text/html" id="nodeTemplate">
 			<li class="node">
@@ -29,7 +31,31 @@
 				{{tmpl(nodes) "#nodeTemplate"}}
 				</ul>
 			</li>			
-		</script>		
+		</script>	
+
+		<div class="notes">
+			Use 'ALT' and arrows to change the selection around. 
+			Use 'CTRL' and arrows to move a node around the tree.
+		</div>
+		<div class="TODO">
+			<ul>
+				<li>Save/Load data from local file store</li>
+				<li>Expand/Collapse</li>
+				<li>Change up/down nagivation to respect expanded nodes</li>
+			</ul>
+		</div>
+		<form>
+		<table>
+		    <tr>
+				<td>File to load:<input type="file" id="fileToLoad"></td>
+				<td><a href="javascript:loadFileAsText()">Load Selected File</a><td>
+			</tr>
+		    <tr>
+				<td>Filename Save As:<input id="inputFileName"></input></td>
+				<td><a href="javascript:saveTextAsFile()">Save Results to File</a></td>
+			</tr>
+		</table>
+		</form>
 	</body>
 
 
@@ -180,6 +206,41 @@
 		set_editor_width_from_node(window.current_node);
 	};	
 	
+function loadFileAsText()
+{
+    var fileToLoad = document.getElementById("fileToLoad").files[0];
+ 
+    var fileReader = new FileReader();
+    fileReader.onload = function(fileLoadedEvent) 
+    {
+        var textFromFileLoaded = fileLoadedEvent.target.result;
+//		eval("rootNode = " + textFromFileLoaded); // assumes json
+		
+//		$("#pageTemplate").tmpl(rootNode).appendTo($("body"));
+		eval('$("#tree").html(' + textFromFileLoaded + ')');
+		$(".node > span").live("click", on_span_clicked);
+		edit_node($(".node").first());
+		setInterval("update_node_from_editor()",100);
+    };
+    fileReader.readAsText(fileToLoad, "UTF-8");
+}
+
+function saveTextAsFile()
+{
+    var fileNameToSaveAs = document.getElementById("inputFileName").value;
+    saveToFile(JSON.stringify($("#tree").html()), fileNameToSaveAs);        
+}
+
+function saveToFile(textToWrite, fileNameToSaveAs)
+{
+    var textFileAsBlob = new Blob([textToWrite], {type:'text/json'});
+ 
+    var downloadLink = document.createElement("a");
+    downloadLink.href = window.webkitURL.createObjectURL(textFileAsBlob);
+    downloadLink.download = fileNameToSaveAs;
+    downloadLink.click();    
+}
+ 
 	var rootNode = {name: "Things Left to do...", nodes:[
 				{name: 'Look',nodes:[		
 					{name: 'Colour the scopes',nodes:[]}, 			
@@ -196,6 +257,7 @@
 					{name: 'Redo',nodes:[]},
 					{name: 'Auto-Save',nodes:[]},
 			]};
+	
 		
 	$("#pageTemplate").tmpl(rootNode).appendTo($("body"));
 	$(".node > span").live("click", on_span_clicked);
